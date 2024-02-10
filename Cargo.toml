@@ -9,7 +9,7 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitworks = { path = "../bitworks" }
+bitworks = { git = "https://github.com/TRI99ERED/bitworks" }
 quote = "*"
 syn = { version = "*", features = ["full"] }
 proc-macro2 = "*"

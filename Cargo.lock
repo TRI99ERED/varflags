@@ -5,6 +5,7 @@ version = 3
 [[package]]
 name = "bitworks"
 version = "0.0.1"
+source = "git+https://github.com/TRI99ERED/bitworks#670e79c1d6ad1534f2fd9f111d710e24f8642bde"
 
 [[package]]
 name = "proc-macro2"
