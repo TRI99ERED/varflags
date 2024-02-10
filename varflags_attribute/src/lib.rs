@@ -74,7 +74,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let struct_name = make_struct_name(ident.clone());
     let variant_match = variant_match(variant_data, count);
 
-    #[allow(unused)]
+    #[allow(unused_mut)]
     let mut serde_impl = proc_macro2::TokenStream::new();
     #[cfg(feature = "serde")]
     {
