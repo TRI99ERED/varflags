@@ -38,9 +38,9 @@ mod test_input_varflags {
     use bitworks::error::ConvResult;
     use bitworks::error::ConvTarget;
     use bitworks::index::Index;
-    use bitworks::prelude::Bitfield;
+    use bitworks::prelude::Bitset;
     // Pick appropriate Bitfield and generate Repr depending on the choice.
-    use bitworks::prelude::Bitfield8 as Inner;
+    use bitworks::prelude::Bitset8 as Inner;
     type Repr = u8;
     
     // Use the enum.
@@ -266,7 +266,7 @@ fn example() -> Result<(), Box<dyn Error>> {
 
     let c = a | b | TestInput::D;
     //                                               EFHDGCBA
-    assert_eq!(c, TestInputVarflags(Bitfield8::new(0b00010011)));
+    assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
 
     assert!(c.contains(&TestInput::A));
     assert!(!c.contains(&TestInput::H));
@@ -298,7 +298,7 @@ fn example() -> Result<(), Box<dyn Error>> {
     let iter = c.variants();
     let c: TestInputVarflags = iter.collect();
     //                                               EFHDGCBA
-    assert_eq!(c, TestInputVarflags(Bitfield8::new(0b00010011)));
+    assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
 
     Ok(())
 }

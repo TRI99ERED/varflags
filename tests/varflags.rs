@@ -2,10 +2,6 @@ use std::error::Error;
 
 use varflags::varflags;
 
-// Specs for Bitflags attribute
-
-#[rustfmt::skip]
-
 // Required attributes (added manually by user).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[varflags]
@@ -23,7 +19,7 @@ enum TestInput {
     E,
 
     // or like this:
-    #[index = 6]
+    #[shift = 6]
     F,
 
     // Representation of the unspecified bits will be calculated
@@ -44,7 +40,7 @@ fn example() -> Result<(), Box<dyn Error>> {
 
     let c = a | b | TestInput::D;
     //                                               EFHDGCBA
-    assert_eq!(c, TestInputVarflags(Bitfield8::new(0b00010011)));
+    assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
 
     assert!(c.contains(&TestInput::A));
     assert!(!c.contains(&TestInput::H));
@@ -76,7 +72,7 @@ fn example() -> Result<(), Box<dyn Error>> {
     let iter = c.variants();
     let c: TestInputVarflags = iter.collect();
     //                                               EFHDGCBA
-    assert_eq!(c, TestInputVarflags(Bitfield8::new(0b00010011)));
+    assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
 
     Ok(())
 }

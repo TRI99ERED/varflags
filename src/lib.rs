@@ -1,11 +1,34 @@
 extern crate proc_macro;
 
+use bitworks::{bitset::Bitset, bitset128::Bitset128};
 use proc_macro2::Ident;
 use quote::quote;
 use syn::{
     parse_macro_input, punctuated::Punctuated, token::Comma, AttrStyle, Expr, Fields, ItemEnum, Lit, Meta, Variant
 };
 
+static NO_GENERICS: &'static str = "generics aren't allowed";
+static NO_ZERO_VAR: &'static str = "enum should have more than 0 variants";
+static UNIT_ONLY: &'static str = "only unit-like enum variants are allowed";
+static ONE_VAR_ATTR: &'static str = "only 1 attribute is allowed per enum variant";
+static NO_INNER_VAR_ATTRS: &'static str = "only outer attributes are allowed for enum variants";
+static SINGLE_WORD_ATTR_NAME: &'static str = "enum variant attribute name should be a single word";
+static NO_SIGNED_DISCR: &'static str = "variant discriminant should be unsigned";
+static BAD_FLAG_ATTR_ARG: &'static str = "bad \"flag\" attribute argument, expected an unsigned integer with 1 set bit in binary representation (power of 2)";
+static BAD_SHIFT_ATTR_ARG: &'static str = "bad \"shift\" attribute argument, expected an integer in range 0..=127";
+static UNKNOWN_VAR_ATTR: &'static str = "unknown variant attribute, expected either \"flag\" or \"shift\"";
+static BAD_VAR_ATTR_TYPE: &'static str = "bad variant attribute type, expected name-value pair in format #[name = value]";
+static ONE_SET_BIT: &'static str = "only 1 bit should be set in a variant discriminant";
+static NAN_DISCR: &'static str = "variant discriminant should be an unsigned integer";
+static BAD_DISCR: &'static str = "expected discriminant expression";
+static DISCR_GEN_ERROR: &'static str = "INTERNAL ERROR: couldn't generate discriminants";
+static UNSET_DISCR_ERROR: &'static str = "INTERNAL ERROR: discriminants should be set";
+static INVALID_DECL_ERROR: &'static str = "INTERNAL ERROR: variant declaration should be valid";
+static INVALID_MATC_ERROR: &'static str = "INTERNAL ERROR: variant match should be valid";
+static INVALID_MOD_ERROR: &'static str = "INTERNAL ERROR: mod name should be valid";
+static INVALID_STRUCT_NAME: &'static str = "INTERNAL ERROR: struct name should be valid";
+
+/// Attribute
 #[proc_macro_attribute]
 pub fn varflags(
     _: proc_macro::TokenStream,
@@ -24,12 +47,12 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     } = parse_macro_input!(item as ItemEnum);
 
     if !generics.params.is_empty() {
-        panic!("generics aren't allowed");
+        panic!("{NO_GENERICS}");
     }
 
     let count = variants.len();
     if count == 0 {
-        panic!("should have more than 0 variants");
+        panic!("{NO_ZERO_VAR}");
     }
 
     if !variants.iter().all(|v| {
@@ -39,14 +62,14 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             false
         }
     }) {
-        panic!("only unit-like variants are allowed")
+        panic!("{UNIT_ONLY}");
     }
 
-    let variant_data = parse_discriminant(variants, count);
+    let variant_data = parse_variants(variants, count);
     let variant_declaration = variant_declaration(variant_data.clone(), count);
     let mod_name = make_mod_name(ident.clone());
     let max_discriminant = *variant_data.discriminants.iter().flatten().max().expect("should have one max discriminant");
-    let (bitfield, repr) = bitfield_repr(max_discriminant);
+    let (bitset, repr) = bitset_repr(max_discriminant);
     let count_tok: proc_macro2::TokenStream = count.to_string().parse().unwrap();
     let struct_name = make_struct_name(ident.clone());
     let variant_match = variant_match(variant_data, count);
@@ -61,8 +84,8 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             use bitworks::error::ConvResult;
             use bitworks::error::ConvTarget;
             use bitworks::index::Index;
-            use bitworks::prelude::Bitfield;
-            use bitworks::prelude::#bitfield as Inner;
+            use bitworks::prelude::Bitset;
+            use bitworks::prelude::#bitset as Inner;
             type Repr = #repr;
             
             use super::#ident as E;
@@ -248,7 +271,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
         
-        use #mod_name::#struct_name;
+        #vis use #mod_name::#struct_name;
     }
     .into()
 }
@@ -259,23 +282,24 @@ struct VariantData {
     discriminants: Vec<Option<u128>>,
 }
 
-fn parse_discriminant(variants: Punctuated<Variant, Comma>, count: usize) -> VariantData {
+fn parse_variants(variants: Punctuated<Variant, Comma>, count: usize) -> VariantData {
     let mut idents = Vec::with_capacity(count);
     let mut discriminants = Vec::with_capacity(count);
+    let mut used_discrs = Bitset128::new(0);
     for variant in variants {
         idents.push(variant.ident.to_string());
 
         let mut attr_discriminant = None;
         if variant.attrs.len() > 1 {
-            panic!("only 1 variant attribute is allowed");
+            panic!("{ONE_VAR_ATTR}");
         } else if variant.attrs.len() == 1 {
             let attribute = &variant.attrs[0];
         if let AttrStyle::Inner(_) = attribute.style {
-            panic!("only outer variant attributes are allowed");
+            panic!("{NO_INNER_VAR_ATTRS}");
         }
         match &attribute.meta {
             Meta::NameValue(nv) => {
-                match nv.path.get_ident().expect("path should be a single ident").to_string().as_str() {
+                match nv.path.get_ident().expect(SINGLE_WORD_ATTR_NAME).to_string().as_str() {
                     "flag" => {
                         match &nv.value {
                             Expr::Lit(lit) => {
@@ -284,35 +308,38 @@ fn parse_discriminant(variants: Punctuated<Variant, Comma>, count: usize) -> Var
                                         attr_discriminant = Some(
                                             lit_int
                                                 .base10_parse::<u128>()
-                                                .expect("variant discriminant should be unsigned"));
+                                                .expect(NO_SIGNED_DISCR));
                                     },
-                                    _ => panic!("bad attribute argument"),
+                                    _ => panic!("{BAD_FLAG_ATTR_ARG}"),
                                 }
                             },
-                            _ => panic!("bad variant attribute value"),
+                            _ => panic!("{BAD_FLAG_ATTR_ARG}"),
                         }
                     },
-                    "index" => {
+                    "shift" => {
                         match &nv.value {
                             Expr::Lit(lit) => {
                                 match &lit.lit {
                                     Lit::Int(lit_int) => {
-                                        let index = lit_int
+                                        let shift = lit_int
                                                 .base10_parse::<usize>()
-                                                .expect("variant discriminant should be unsigned");
-                                        attr_discriminant = Some(1 << index);
+                                                .expect(NO_SIGNED_DISCR);
+                                        if shift > 127 {
+                                            panic!("{BAD_SHIFT_ATTR_ARG}");
+                                        }
+                                        attr_discriminant = Some(1 << shift);
                                         
                                     },
-                                    _ => panic!("bad attribute argument"),
+                                    _ => panic!("{BAD_SHIFT_ATTR_ARG}"),
                                 }
                             },
-                            _ => panic!("bad variant attribute value"),
+                            _ => panic!("{BAD_SHIFT_ATTR_ARG}"),
                         }
                     }
-                    _ => panic!("unknown variant attribute")
+                    _ => panic!("{UNKNOWN_VAR_ATTR}"),
                 }
             },
-            _ => panic!("bad attribute type"),
+            _ => panic!("{BAD_VAR_ATTR_TYPE}"),
         }
         }
 
@@ -322,33 +349,46 @@ fn parse_discriminant(variants: Punctuated<Variant, Comma>, count: usize) -> Var
                     Lit::Int(lit_int) => {
                         let discriminant = lit_int
                             .base10_parse::<u128>()
-                            .expect("variant discriminant should be unsigned");
-                        if !discriminant.count_ones() == 1 {
-                            panic!("only 1 bit should be set in a variant discriminant");
+                            .expect(NO_SIGNED_DISCR);
+                        if discriminant.count_ones() != 1 {
+                            panic!("{ONE_SET_BIT}");
                         }
+                        used_discrs.insert(Bitset128::new(discriminant));
                         discriminants.push(Some(discriminant));
                     }
-                    _ => panic!("variant discriminant should be a number"),
+                    _ => panic!("{NAN_DISCR}"),
                 },
-                _ => panic!("variant discriminant should be an expression"),
+                _ => panic!("{BAD_DISCR}"),
             },
             None => match attr_discriminant {
-                    Some(d) => discriminants.push(Some(d)),
+                    Some(discriminant) => {
+                        if discriminant.count_ones() != 1 {
+                            panic!("{ONE_SET_BIT}");
+                        }
+                        used_discrs.insert(Bitset128::new(discriminant));
+                        discriminants.push(Some(discriminant))
+                    },
                     None => discriminants.push(None),
             }
         };
     }
 
     for i in 0..count {
-        if let None = discriminants[i] {
+        if discriminants[i].is_none() {
+            let mut found_value = None;
             for j in 0..count {
-                let n: u128 = 1 << j;
-                if !discriminants.contains(&Some(n)) {
-                    discriminants[i] = Some(n);
+                let discriminant: u128 = 1 << j;
+                if !used_discrs.intersects(Bitset128::new(discriminant)) {
+                    used_discrs.insert(Bitset128::new(discriminant));
+                    found_value = Some(discriminant);
                     break;
-                } else if j == count - 1 {
-                    panic!("couldn't generate discriminants");
                 }
+            }
+
+            if let Some(value) = found_value {
+                discriminants[i] = Some(value);
+            } else {
+                panic!("{DISCR_GEN_ERROR}");
             }
         }
     }
@@ -364,15 +404,15 @@ fn variant_declaration(data: VariantData, count: usize) -> proc_macro2::TokenStr
         s.push_str(&format!(
             "{} = {},",
             data.idents[i],
-            data.discriminants[i].expect("discriminants should be set")
+            data.discriminants[i].expect(UNSET_DISCR_ERROR)
         ));
     }
-    s.parse().expect("variant declaration should be valid")
+    s.parse().expect(INVALID_DECL_ERROR)
 }
 
 fn make_mod_name(enum_name: Ident) -> proc_macro2::TokenStream {
     let s = format!("{}_varflags", upper_camel_to_snake(&enum_name.to_string()));
-    s.parse().expect("mod name should be valid")
+    s.parse().expect(INVALID_MOD_ERROR)
 }
 
 fn upper_camel_to_snake(upper_camel: &str) -> String {
@@ -391,7 +431,7 @@ fn upper_camel_to_snake(upper_camel: &str) -> String {
     snake
 }
 
-fn bitfield_repr(max_discriminant: u128) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+fn bitset_repr(max_discriminant: u128) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     const U8_MAX: u128 = u8::MAX as u128;
     const U8_MAX_PLUS_1: u128 = U8_MAX + 1;
     const U16_MAX: u128 = u16::MAX as u128;
@@ -407,17 +447,17 @@ fn bitfield_repr(max_discriminant: u128) -> (proc_macro2::TokenStream, proc_macr
         U16_MAX_PLUS_1..=U32_MAX => 32,
         U32_MAX_PLUS_1..=U64_MAX => 64,
         U64_MAX_PLUS_1..=u128::MAX => 128,
-        _ => panic!("bad variant count"),
+        0 => panic!("bitset_repr: {NO_ZERO_VAR}"),
     };
 
-    let bitfield = format!("Bitfield{n}");
+    let bitset = format!("Bitset{n}");
     let repr = format!("u{n}");
-    (bitfield.parse().unwrap(), repr.parse().unwrap())
+    (bitset.parse().unwrap(), repr.parse().unwrap())
 }
 
 fn make_struct_name(enum_name: Ident) -> proc_macro2::TokenStream {
     let s = format!("{}Varflags", enum_name.to_string());
-    s.parse().expect("struct name should be valid")
+    s.parse().expect(INVALID_STRUCT_NAME)
 }
 
 fn variant_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
@@ -425,9 +465,9 @@ fn variant_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
     for i in 0..count {
         s.push_str(&format!(
             "{} => Ok(E::{}),",
-            data.discriminants[i].expect("discriminants should be set"),
+            data.discriminants[i].expect(UNSET_DISCR_ERROR),
             data.idents[i]
         ));
     }
-    s.parse().expect("variant match should be valid")
+    s.parse().expect(INVALID_MATC_ERROR)
 }
