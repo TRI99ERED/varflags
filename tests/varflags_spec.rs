@@ -1,6 +1,6 @@
 use std::error::Error;
 
-// Specs for Bitflags attribute
+// Specs for Varflags attribute
 
 #[rustfmt::skip]
 
@@ -42,10 +42,10 @@ mod test_input_varflags {
     // Pick appropriate Bitfield and generate Repr depending on the choice.
     use bitworks::prelude::Bitset8 as Inner;
     type Repr = u8;
-    
+
     // Use the enum.
     use super::TestInput as E;
-    
+
     // Generated based on number of variants
     const VAR_COUNT: usize = 8;
 
@@ -98,14 +98,37 @@ mod test_input_varflags {
                 0b01000000 => Ok(E::F),
                 0b00001000 => Ok(E::G),
                 0b00100000 => Ok(E::H),
-                _ => Err(ConvError::new(ConvTarget::Index(Inner::BYTE_SIZE), ConvTarget::Enum(VAR_COUNT))),
+                _ => Err(ConvError::new(
+                    ConvTarget::Index(Inner::BYTE_SIZE),
+                    ConvTarget::Enum(VAR_COUNT),
+                )),
             }
         }
     }
 
-    // This struct will be generated with Bitflags appended to enum's name.
+    // Generate Display for input
+    impl core::fmt::Display for E {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "{}",
+                match *self {
+                    E::A => "A",
+                    E::B => "B",
+                    E::C => "C",
+                    E::D => "D",
+                    E::E => "E",
+                    E::F => "F",
+                    E::G => "G",
+                    E::H => "H",
+                }
+            )
+        }
+    }
+
+    // This struct will be generated with Varflags appended to enum's name.
     // Should derive Debug, PartialEq and Eq.
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
     pub struct TestInputVarflags(
         // Attribute should calculate, that Inner is to be used here.
         // Can't use ByteField here. Should be private.
@@ -247,10 +270,50 @@ mod test_input_varflags {
         }
     }
 
-    // Generate implementation of FromIterator for Bitflags
+    // Generate implementation of FromIterator for Varflags
     impl FromIterator<E> for TestInputVarflags {
         fn from_iter<T: IntoIterator<Item = E>>(iter: T) -> Self {
             iter.into_iter().fold(Self::none(), |acc, v| acc | v)
+        }
+    }
+
+    // Generate Debug for Varflags
+    impl core::fmt::Debug for TestInputVarflags {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let count = self.variants().count();
+            write!(
+                f,
+                "TestInputVarflags{{{}}}",
+                self.variants()
+                    .enumerate()
+                    .fold("".to_owned(), |mut acc, (i, v)| {
+                        acc.push_str(&v.to_string());
+                        if i != count - 1 {
+                            acc.push_str(", ")
+                        }
+                        acc
+                    })
+            )
+        }
+    }
+
+    // Generate Display for Varflags
+    impl core::fmt::Display for TestInputVarflags {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            let count = self.variants().count();
+            write!(
+                f,
+                "{{{}}}",
+                self.variants()
+                    .enumerate()
+                    .fold("".to_owned(), |mut acc, (i, v)| {
+                        acc.push_str(&v.to_string());
+                        if i != count - 1 {
+                            acc.push_str(", ")
+                        }
+                        acc
+                    })
+            )
         }
     }
 }
@@ -264,8 +327,12 @@ fn example() -> Result<(), Box<dyn Error>> {
     let a = TestInput::A;
     let b = TestInput::B;
 
+    assert_eq!(TestInput::D as u8, 0b00010000);
+    assert_eq!(TestInput::E as u8, 0b10000000);
+    assert_eq!(TestInput::F as u8, 0b01000000);
+
     let c = a | b | TestInput::D;
-    //                                               EFHDGCBA
+    //                                             EFHDGCBA
     assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
 
     assert!(c.contains(&TestInput::A));
@@ -297,8 +364,12 @@ fn example() -> Result<(), Box<dyn Error>> {
 
     let iter = c.variants();
     let c: TestInputVarflags = iter.collect();
-    //                                               EFHDGCBA
+    //                                             EFHDGCBA
     assert_eq!(c, TestInputVarflags(Bitset8::new(0b00010011)));
+
+    println!("{c}");
+
+    println!("{c:?}");
 
     Ok(())
 }
