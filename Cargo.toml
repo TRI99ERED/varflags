@@ -3,10 +3,12 @@ name = "varflags"
 version = "0.0.1"
 edition = "2021"
 
+[features]
+serde = ["dep:serde", "bitworks/serde", "varflags_attribute/serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 varflags_attribute = { path = "varflags_attribute" }
 bitworks = { git = "https://github.com/TRI99ERED/bitworks" }
-serde = { version = "*", features = ["derive"] }
+serde = { version = "*", optional = true, features = ["derive"] }

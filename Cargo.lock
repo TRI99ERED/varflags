@@ -6,6 +6,9 @@ version = 3
 name = "bitworks"
 version = "0.0.1"
 source = "git+https://github.com/TRI99ERED/bitworks#766d7c6c8bc746e7d887556381a6d96fde3ee263"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -78,5 +81,6 @@ dependencies = [
  "bitworks",
  "proc-macro2",
  "quote",
+ "serde",
  "syn",
 ]
