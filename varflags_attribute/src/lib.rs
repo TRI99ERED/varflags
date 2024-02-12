@@ -180,20 +180,20 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
 
                 /// Returns true, if set contains a flag.
                 pub fn contains(&self, variant: &E) -> bool {
-                    self.0.super_set(Inner::new(*variant as Repr))
+                    self.0.includes(&Inner::new(*variant as Repr))
                 }
 
-                /// Returns true, if set contains all flags of other.
-                pub fn super_set(&self, other: &Self) -> bool {
-                    self.0.super_set(other.0)
+                /// Returns true, if set contains all flags of `other`.
+                pub fn includes(&self, other: &Self) -> bool {
+                    self.0.includes(&other.0)
                 }
 
-                /// Returns true, if both self and other sets share a flag.
+                /// Returns true, if set shares a flag with `other`.
                 pub fn intersects(&self, other: &Self) -> bool {
-                    self.0.intersects(other.0)
+                    self.0.intersects(&other.0)
                 }
 
-                /// Returns iterator over set variants
+                /// Returns iterator over variants contained in the set.
                 pub fn variants<'a>(&'a self) -> impl Iterator<Item = E> + 'a {
                     self.0.ones().filter_map(|i| i.try_into().ok())
                 }
@@ -406,7 +406,7 @@ fn parse_variants(variants: Punctuated<Variant, Comma>, count: usize) -> Variant
                         if discriminant.count_ones() != 1 {
                             panic!("{ONE_SET_BIT}");
                         }
-                        used_discrs.insert(Bitset128::new(discriminant));
+                        used_discrs.include(Bitset128::new(discriminant));
                         discriminants.push(Some(discriminant));
                     }
                     _ => panic!("{NAN_DISCR}"),
@@ -418,7 +418,7 @@ fn parse_variants(variants: Punctuated<Variant, Comma>, count: usize) -> Variant
                         if discriminant.count_ones() != 1 {
                             panic!("{ONE_SET_BIT}");
                         }
-                        used_discrs.insert(Bitset128::new(discriminant));
+                        used_discrs.include(Bitset128::new(discriminant));
                         discriminants.push(Some(discriminant))
                     },
                     None => discriminants.push(None),
@@ -431,8 +431,8 @@ fn parse_variants(variants: Punctuated<Variant, Comma>, count: usize) -> Variant
             let mut found_value = None;
             for j in 0..count {
                 let discriminant: u128 = 1 << j;
-                if !used_discrs.intersects(Bitset128::new(discriminant)) {
-                    used_discrs.insert(Bitset128::new(discriminant));
+                if !used_discrs.intersects(&Bitset128::new(discriminant)) {
+                    used_discrs.include(Bitset128::new(discriminant));
                     found_value = Some(discriminant);
                     break;
                 }

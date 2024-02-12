@@ -48,8 +48,8 @@ fn example() -> Result<(), Box<dyn Error>> {
     let d = TestInput2::A | TestInput2::B;
     let e = TestInput2::A | TestInput2::C;
 
-    assert!(c.super_set(&d));
-    assert!(!c.super_set(&e));
+    assert!(c.includes(&d));
+    assert!(!c.includes(&e));
 
     let f = TestInput2::F | TestInput2::H;
 

@@ -5,7 +5,7 @@ version = 3
 [[package]]
 name = "bitworks"
 version = "0.0.1"
-source = "git+https://github.com/TRI99ERED/bitworks#766d7c6c8bc746e7d887556381a6d96fde3ee263"
+source = "git+https://github.com/TRI99ERED/bitworks#bbaf4320913a3c6166f428ef3136ff09e9f9df4d"
 dependencies = [
  "serde",
 ]

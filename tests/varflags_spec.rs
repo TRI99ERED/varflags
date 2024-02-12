@@ -155,17 +155,17 @@ mod test_input_varflags {
 
         // Returns true, if contains a flag
         pub fn contains(&self, variant: &E) -> bool {
-            self.0.super_set(Inner::new(*variant as Repr))
+            self.0.includes(&Inner::new(*variant as Repr))
         }
 
         // Returns true, if contains all flags of other.
-        pub fn super_set(&self, other: &Self) -> bool {
-            self.0.super_set(other.0)
+        pub fn includes(&self, other: &Self) -> bool {
+            self.0.includes(&other.0)
         }
 
         // Returns true, if both self and other share a flag.
         pub fn intersects(&self, other: &Self) -> bool {
-            self.0.intersects(other.0)
+            self.0.intersects(&other.0)
         }
 
         // Returns iterator over variants
@@ -341,8 +341,8 @@ fn example() -> Result<(), Box<dyn Error>> {
     let d = TestInput::A | TestInput::B;
     let e = TestInput::A | TestInput::C;
 
-    assert!(c.super_set(&d));
-    assert!(!c.super_set(&e));
+    assert!(c.includes(&d));
+    assert!(!c.includes(&e));
 
     let f = TestInput::F | TestInput::H;
 
