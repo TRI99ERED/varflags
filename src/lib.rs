@@ -2,6 +2,8 @@
 //! [`Varflags`] struct to create easy to use bitflags data structure defined over enum variants.
 //! 
 //! Read [`varflags`] documentation for comprehensive description with example.
+//! 
+//! Enable feature `"serde"` to enable `serde::Serialize` and `serde::Deserialize` for most applicable types.
 
 extern crate varflags_attribute;
 pub use varflags_attribute::varflags;
