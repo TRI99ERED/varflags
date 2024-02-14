@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "bitworks"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dc342b8f17a57b184e31d941e37a9156b40a9cd4c571e7a64db00c0727a57be"
+checksum = "b9dcdf24c92fd5b4960fe2ebdd37784a873379defde24a838d5a836213c92fa6"
 dependencies = [
  "serde",
 ]

@@ -12,7 +12,7 @@ serde = ["dep:serde", "bitworks/serde"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitworks = "0.1.4"
+bitworks = "0.1.5"
 quote = "*"
 syn = { version = "*", features = ["full"] }
 proc-macro2 = "*"

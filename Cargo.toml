@@ -10,5 +10,5 @@ serde = ["dep:serde", "bitworks/serde", "varflags_attribute/serde"]
 
 [dependencies]
 varflags_attribute = { path = "varflags_attribute" }
-bitworks = "0.1.4"
+bitworks = "0.1.5"
 serde = { version = "*", optional = true, features = ["derive"] }
