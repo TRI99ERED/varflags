@@ -22,7 +22,7 @@ static UNKNOWN_VAR_ATTR: &'static str =
     "unknown variant attribute, expected either \"flag\" or \"shift\"";
 static BAD_VAR_ATTR_TYPE: &'static str =
     "bad variant attribute type, expected name-value pair in format #[name = value]";
-static ONE_SET_BIT: &'static str = "only 1 bit should be set in a variant discriminant";
+static ONE_SET_BIT: &'static str = "exactly 1 bit should be set in a variant discriminant";
 static NAN_DISCR: &'static str = "variant discriminant should be an unsigned integer";
 static BAD_DISCR: &'static str = "expected unsigned discriminant expression";
 static DISCR_GEN_ERROR: &'static str = "INTERNAL ERROR: couldn't generate discriminants";
@@ -31,8 +31,105 @@ static INVALID_DECL_ERROR: &'static str = "INTERNAL ERROR: variant declaration s
 static INVALID_MATC_ERROR: &'static str = "INTERNAL ERROR: variant match should be valid";
 static INVALID_MOD_ERROR: &'static str = "INTERNAL ERROR: mod name should be valid";
 static INVALID_STRUCT_NAME: &'static str = "INTERNAL ERROR: struct name should be valid";
+static INVALID_DOC_COMMENT: &'static str = "INTERNAL ERROR: doc comment should be valid";
 
-/// TODO: Docs
+/// Attribute marking an enum declaration as input for Varflags.
+///
+/// This attribute requires a unit-only enum with more than 0 variants and all of the variants'
+/// discriminants should have exactly one bit set. It can't have more than 128 variants.
+///
+/// It does exactly this list of things:
+/// * Derives [`Clone`] for the enum. It is required, so you don't have to derive or implement it manually.
+/// * Adds `#[repr]` attribute for the enum which can be set to either [`u8`], [`u16`], [`u32`], [`u64`] or [`u128`].<br/>
+/// Keep in mind, that `#[repr(u128)]` is currently unstable.
+/// * Consumes `#[flag]` and `#[shift]` variant attributes and sets their variants' discriminants accordingly.
+/// * Calculates and asigns unused discriminants for variants wihout explicit discriminants or attributes.
+/// * Creates a private module called after enum name converted to snake case with _varflags appended.
+/// * Generates [`From`] implementation for representing (unsigned integer) type from the enum.
+/// * Generates [`Not`][core::ops::Not], [`BitAnd`][core::ops::BitAnd], [`BitOr`][core::ops::BitOr] and
+/// [`BitXor`][core::ops::BitXor] for the enum, with output being `Varflags` struct, with `E` being input enum
+/// and `B` being one of the built-in [`bitworks`] bitsets with correct representation.
+/// * Generates [`TryFrom`] implementation for input enum from [`bitworks::index::Index`] (for the correct `Bitset`).
+/// * Generates [`core::fmt::Display`] for input enum, which just outputs a stringified variant name.
+/// * Re-exports a type alias for `Varflags` specific for input enum named as the name of input enum with
+/// "Varflags" appended. The re-export will have the same visibility as the enum.
+///
+/// # Examples
+/// ```rust
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
+/// use varflags::varflags;
+/// 
+/// #[derive(Copy, PartialEq, Eq, Debug)]
+/// #[varflags]
+/// enum TestInput {
+///     // Representation of the unspecified bits will be calculated
+///     A,
+///     B,
+///     C,
+///     // Or you can manually specify:
+///     D = 0b00010000,
+///     // Subattributes allow to change representation too:
+///     #[flag = 0b10000000]
+///     E,
+///     // or like this (corresponds to 0b01000000):
+///     #[shift = 6]
+///     F,
+///     // Representation of the unspecified bits will be calculated
+///     G,
+///     H,
+/// }
+/// 
+/// let a = TestInput::A;
+/// let b = TestInput::B;
+/// 
+/// assert_eq!(u8::from(TestInput::D), 0b00010000);
+/// assert_eq!(u8::from(TestInput::E), 0b10000000);
+/// assert_eq!(u8::from(TestInput::F), 0b01000000);
+/// 
+/// let c = a | b | TestInput::D;
+/// //                                                                             EFHDGCBA
+/// assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
+/// 
+/// assert!(c.contains(&TestInput::A));
+/// assert!(!c.contains(&TestInput::H));
+///
+/// let d = TestInput::A | TestInput::B;
+/// let e = TestInput::A | TestInput::C;
+/// 
+/// assert!(c.includes(&d));
+/// assert!(!c.includes(&e));
+/// 
+/// let f = TestInput::F | TestInput::H;
+/// 
+/// assert!(c.intersects(&e));
+/// assert!(!c.intersects(&f));
+/// 
+/// let x = TestInputVarflags::ALL;
+/// let mut iter = x.variants();
+/// 
+/// assert_eq!(iter.next(), Some(TestInput::A));
+/// assert_eq!(iter.next(), Some(TestInput::B));
+/// assert_eq!(iter.next(), Some(TestInput::C));
+/// assert_eq!(iter.next(), Some(TestInput::G));
+/// assert_eq!(iter.next(), Some(TestInput::D));
+/// assert_eq!(iter.next(), Some(TestInput::H));
+/// assert_eq!(iter.next(), Some(TestInput::F));
+/// assert_eq!(iter.next(), Some(TestInput::E));
+/// assert_eq!(iter.next(), None);
+/// 
+/// let iter = c.variants();
+/// let c: TestInputVarflags = iter.collect();
+/// //                                                                             EFHDGCBA
+/// assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
+/// 
+/// println!("{c}");
+/// 
+/// println!("{c:?}");
+/// 
+/// #   Ok(())
+/// # }
+/// ```
 #[proc_macro_attribute]
 pub fn varflags(
     _: proc_macro::TokenStream,
@@ -55,6 +152,7 @@ struct EnumData {
 }
 
 impl Parse for EnumData {
+    #[inline(always)]
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         input.call(syn::Attribute::parse_outer)?;
         input.parse::<Token![enum]>()?;
@@ -242,6 +340,7 @@ impl Parse for EnumData {
     }
 }
 
+#[inline(always)]
 fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let EnumData {
         vis,
@@ -262,6 +361,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let struct_name = make_struct_name(name.clone());
     let try_from_match = try_from_match(variant_data.clone(), count);
     let display_match = display_match(variant_data, count);
+    let doc_comment = doc_comment(name.clone());
 
     quote! {
         #[derive(Clone)]
@@ -278,9 +378,11 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             use super::#name as E;
 
+            #doc_comment
             pub type #struct_name = varflags::Varflags<E, Inner>;
 
             impl From<E> for Repr {
+                #[inline(always)]
                 fn from(value: E) -> Self {
                     value as Repr
                 }
@@ -289,6 +391,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl core::ops::Not for E {
                 type Output = #struct_name;
 
+                #[inline(always)]
                 fn not(self) -> Self::Output {
                     #struct_name::_from_inner(!Inner::new(self as Repr))
                 }
@@ -297,6 +400,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl core::ops::BitAnd for E {
                 type Output = #struct_name;
 
+                #[inline(always)]
                 fn bitand(self, rhs: Self) -> Self::Output {
                     #struct_name::_from_inner(Inner::new(self as Repr) & Inner::new(rhs as Repr))
                 }
@@ -305,6 +409,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl core::ops::BitOr for E {
                 type Output = #struct_name;
 
+                #[inline(always)]
                 fn bitor(self, rhs: Self) -> Self::Output {
                     #struct_name::_from_inner(Inner::new(self as Repr) | Inner::new(rhs as Repr))
                 }
@@ -313,6 +418,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl core::ops::BitXor for E {
                 type Output = #struct_name;
 
+                #[inline(always)]
                 fn bitxor(self, rhs: Self) -> Self::Output {
                     #struct_name::_from_inner(Inner::new(self as Repr) ^ Inner::new(rhs as Repr))
                 }
@@ -321,6 +427,7 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl TryFrom<Index<Inner>> for E {
                 type Error = ReprToFlagError<Repr>;
 
+                #[inline(always)]
                 fn try_from(value: Index<Inner>) -> Result<Self, Self::Error> {
                     let n: Repr = 1 << value.into_inner();
                     match n {
@@ -344,6 +451,11 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+fn doc_comment(name: Ident) -> proc_macro2::TokenStream {
+    format!("/// [`Varflags`] specific for [`{}`].", name).parse().expect(INVALID_DOC_COMMENT)
+}
+
+#[inline(always)]
 fn variant_declaration(data: VariantData, count: usize) -> proc_macro2::TokenStream {
     let mut s = "".to_owned();
     for i in 0..count {
@@ -356,11 +468,13 @@ fn variant_declaration(data: VariantData, count: usize) -> proc_macro2::TokenStr
     s.parse().expect(INVALID_DECL_ERROR)
 }
 
+#[inline(always)]
 fn make_mod_name(enum_name: Ident) -> proc_macro2::TokenStream {
     let s = format!("{}_varflags", upper_camel_to_snake(&enum_name.to_string()));
     s.parse().expect(INVALID_MOD_ERROR)
 }
 
+#[inline(always)]
 fn upper_camel_to_snake(upper_camel: &str) -> String {
     let mut snake = String::with_capacity(upper_camel.len());
 
@@ -377,6 +491,7 @@ fn upper_camel_to_snake(upper_camel: &str) -> String {
     snake
 }
 
+#[inline(always)]
 fn bitset_repr(max_discriminant: u128) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     const U8_MAX: u128 = u8::MAX as u128;
     const U8_MAX_PLUS_1: u128 = U8_MAX + 1;
@@ -404,11 +519,13 @@ fn bitset_repr(max_discriminant: u128) -> (proc_macro2::TokenStream, proc_macro2
     )
 }
 
+#[inline(always)]
 fn make_struct_name(enum_name: Ident) -> proc_macro2::TokenStream {
     let s = format!("{}Varflags", enum_name.to_string());
     s.parse().expect(INVALID_STRUCT_NAME)
 }
 
+#[inline(always)]
 fn try_from_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
     let mut s = "".to_owned();
     for i in 0..count {
@@ -421,6 +538,7 @@ fn try_from_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
     s.parse().expect(INVALID_MATC_ERROR)
 }
 
+#[inline(always)]
 fn display_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
     let mut s = "".to_owned();
     for i in 0..count {

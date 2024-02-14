@@ -34,9 +34,9 @@ fn example() -> Result<(), Box<dyn Error>> {
     let a = TestInput::A;
     let b = TestInput::B;
 
-    assert_eq!(TestInput::D as u8, 0b00010000);
-    assert_eq!(TestInput::E as u8, 0b10000000);
-    assert_eq!(TestInput::F as u8, 0b01000000);
+    assert_eq!(u8::from(TestInput::D), 0b00010000);
+    assert_eq!(u8::from(TestInput::E), 0b10000000);
+    assert_eq!(u8::from(TestInput::F), 0b01000000);
 
     let c = a | b | TestInput::D;
     //                                                          EFHDGCBA

@@ -9,6 +9,7 @@ use std::{
 
 pub mod error;
 
+/// Struct representing set over variants of some enum `E` implemented using [`bitworks`] bitset `B`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Varflags<E, B>(pub(crate) B, pub(crate) PhantomData<E>)
@@ -23,34 +24,34 @@ where
     B: Bitset + Copy,
     B::Repr: From<E>,
 {
-    /// Empty set of flags.
+    /// Empty set of variants.
     pub const NONE: Self = Self(B::NONE, PhantomData);
 
-    /// Full set of flags.
+    /// Set of variants containing every variant of `E`.
     pub const ALL: Self = Self(B::ALL, PhantomData);
 
-    /// Constructs Varflags from the inner [`Bitset`].
+    /// Constructs `Varflags` from the inner [`Bitset`].
     pub const fn _from_inner(bitset: B) -> Self {
         Self(bitset, PhantomData)
     }
 
-    /// Returns true, if contains a flag.
+    /// Returns true, if `self` contains a `variant`.
     pub fn contains(&self, variant: &E) -> bool {
         self.0
             .includes(&B::from_repr(B::Repr::from(variant.clone())))
     }
 
-    /// Returns true, if contains all flags of other.
+    /// Returns true, if `self` contains all variants of `other`.
     pub fn includes(&self, other: &Self) -> bool {
         self.0.includes(&other.0)
     }
 
-    /// Returns true, if both self and other share a flag.
+    /// Returns true, if both `self` and `other` share at least 1 variant.
     pub fn intersects(&self, other: &Self) -> bool {
         self.0.intersects(&other.0)
     }
 
-    /// Returns iterator over variants
+    /// Returns iterator over variants contained in `self`.
     pub fn variants<'a>(&'a self) -> impl Iterator<Item = E> + 'a {
         self.0.ones().filter_map(|i| i.try_into().ok())
     }

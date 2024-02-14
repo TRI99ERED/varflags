@@ -9,6 +9,21 @@ use std::{
 pub struct ReprToFlagError<Repr: Sized + Binary + Debug>(Repr);
 
 impl<Repr: Sized + Binary + Debug> ReprToFlagError<Repr> {
+    /// Constructs a new value of `ReprToFlagError`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// # use std::error::Error;
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// use varflags::error::ReprToFlagError;
+    /// 
+    /// // Oh no, I couldn't convert from u8 to my enum of 8 variants.
+    /// let error = ReprToFlagError::new(3u8);
+    /// 
+    /// assert_eq!(error.to_string(), "failed to construct a flag from {integer}, no variant has this discriminant: 0b11");
+    /// #   Ok(())
+    /// # }
+    /// ```
     pub const fn new(repr: Repr) -> Self {
         Self(repr)
     }
