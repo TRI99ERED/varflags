@@ -3,7 +3,7 @@ use std::error::Error;
 use varflags::varflags;
 
 // Required attributes (added manually by user).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 #[varflags]
 enum TestInput {
     // Representation of the unspecified bits will be calculated
