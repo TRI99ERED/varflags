@@ -1,7 +1,5 @@
 extern crate proc_macro;
 
-use std::collections::HashSet;
-
 use bitworks::{bitset::Bitset, bitset128::Bitset128};
 use proc_macro2::Ident;
 use quote::quote;
@@ -29,21 +27,17 @@ static INVALID_DECL_ERROR: &'static str = "INTERNAL ERROR: variant declaration s
 static INVALID_MATC_ERROR: &'static str = "INTERNAL ERROR: variant match should be valid";
 static INVALID_MOD_ERROR: &'static str = "INTERNAL ERROR: mod name should be valid";
 static INVALID_STRUCT_NAME: &'static str = "INTERNAL ERROR: struct name should be valid";
-static MAX_3_ARGS: &'static str = "too many arguments, max 3";
-static ONLY_NAME_ARGS: &'static str = "argument should be a single word";
-static BAD_ARG: &'static str = "bad argument, expected one of: \"Clone\", \"Copy\" or \"Hash\"";
-static BAD_ARG_TYPE: &'static str = "wrong argument type, expected name of trait to be derived";
 
 /// Attribute
 #[proc_macro_attribute]
 pub fn varflags(
-    args: proc_macro::TokenStream,
+    _: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    varflags_impl(args, item)
+    varflags_impl(item)
 }
 
-fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ItemEnum {
         vis,
         ident,
@@ -76,20 +70,9 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
     let mod_name = make_mod_name(ident.clone());
     let max_discriminant = *variant_data.discriminants.iter().flatten().max().expect("enum variants should have one biggest discriminant");
     let (bitset, repr) = bitset_repr(max_discriminant);
-    let count_tok: proc_macro2::TokenStream = count.to_string().parse().expect("count should be a valid numeric literal token");
     let struct_name = make_struct_name(ident.clone());
     let try_from_match = try_from_match(variant_data.clone(), count);
-    let struct_name_string = struct_name.to_string();
     let display_match = display_match(variant_data, count);
-
-    let args = parse_macro_input!(args with Punctuated::<Meta, syn::Token![,]>::parse_terminated);
-    let additional_derives = additional_derives(args);
-    #[allow(unused_mut)]
-    let mut serde_impl = proc_macro2::TokenStream::new();
-    #[cfg(feature = "serde")]
-    {
-        serde_impl = "#[derive(serde::Serialize, serde::Deserialize)]".parse().expect("derive for serde should be a valid derive attribute token");
-    }
 
     quote! {
         #[repr(#repr)]
@@ -98,23 +81,26 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
         }
 
         mod #mod_name {
-            use bitworks::error::ConvError;
-            use bitworks::error::ConvResult;
-            use bitworks::error::ConvTarget;
+            use varflags::error::ReprToFlagError;
             use bitworks::index::Index;
-            use bitworks::prelude::Bitset;
             use bitworks::prelude::#bitset as Inner;
             type Repr = #repr;
             
             use super::#ident as E;
+            
+            pub type #struct_name = varflags::Varflags<E, Inner>;
 
-            const VAR_COUNT: usize = #count_tok;
+            impl From<E> for Repr {
+                fn from(value: E) -> Self {
+                    value as Repr
+                }
+            }
 
             impl core::ops::Not for E {
                 type Output = #struct_name;
 
                 fn not(self) -> Self::Output {
-                    #struct_name(!Inner::new(self as Repr))
+                    #struct_name::_from_inner(!Inner::new(self as Repr))
                 }
             }
 
@@ -122,7 +108,7 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
                 type Output = #struct_name;
 
                 fn bitand(self, rhs: Self) -> Self::Output {
-                    #struct_name(Inner::new(self as Repr) & Inner::new(rhs as Repr))
+                    #struct_name::_from_inner(Inner::new(self as Repr) & Inner::new(rhs as Repr))
                 }
             }
 
@@ -130,7 +116,7 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
                 type Output = #struct_name;
 
                 fn bitor(self, rhs: Self) -> Self::Output {
-                    #struct_name(Inner::new(self as Repr) | Inner::new(rhs as Repr))
+                    #struct_name::_from_inner(Inner::new(self as Repr) | Inner::new(rhs as Repr))
                 }
             }
 
@@ -138,18 +124,18 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
                 type Output = #struct_name;
 
                 fn bitxor(self, rhs: Self) -> Self::Output {
-                    #struct_name(Inner::new(self as Repr) ^ Inner::new(rhs as Repr))
+                    #struct_name::_from_inner(Inner::new(self as Repr) ^ Inner::new(rhs as Repr))
                 }
             }
 
             impl TryFrom<Index<Inner>> for E {
-                type Error = ConvError;
+                type Error = ReprToFlagError<Repr>;
 
-                fn try_from(value: Index<Inner>) -> ConvResult<Self> {
+                fn try_from(value: Index<Inner>) -> Result<Self, Self::Error> {
                     let n: Repr = 1 << value.into_inner();
                     match n {
                         #try_from_match
-                        _ => Err(ConvError::new(ConvTarget::Index(Inner::BYTE_SIZE), ConvTarget::Enum(VAR_COUNT))),
+                        _ => Err(Self::Error::new(n)),
                     }
                 }
             }
@@ -159,167 +145,6 @@ fn varflags_impl(args: proc_macro::TokenStream, item: proc_macro::TokenStream) -
                     write!(f, "{}", match *self {
                         #display_match
                     })
-                }
-            }
-
-            #[derive(PartialEq, Eq, #additional_derives)]
-            #serde_impl
-            pub struct #struct_name(pub Inner);
-
-            #[allow(unused)]
-            impl #struct_name {
-                /// Returns empty variant set.
-                pub const fn none() -> Self {
-                    Self(Inner::NONE)
-                }
-
-                /// Returns filled variant set.
-                pub const fn all() -> Self {
-                    Self(Inner::ALL)
-                }
-
-                /// Returns true, if set contains a flag.
-                pub fn contains(&self, variant: &E) -> bool {
-                    self.0.includes(&Inner::new(*variant as Repr))
-                }
-
-                /// Returns true, if set contains all flags of `other`.
-                pub fn includes(&self, other: &Self) -> bool {
-                    self.0.includes(&other.0)
-                }
-
-                /// Returns true, if set shares a flag with `other`.
-                pub fn intersects(&self, other: &Self) -> bool {
-                    self.0.intersects(&other.0)
-                }
-
-                /// Returns iterator over variants contained in the set.
-                pub fn variants<'a>(&'a self) -> impl Iterator<Item = E> + 'a {
-                    self.0.ones().filter_map(|i| i.try_into().ok())
-                }
-            }
-
-            impl core::ops::Not for #struct_name {
-                type Output = Self;
-
-                fn not(self) -> Self::Output {
-                    Self(!self.0)
-                }
-            }
-
-            impl core::ops::BitAnd for #struct_name {
-                type Output = Self;
-
-                fn bitand(self, rhs: Self) -> Self::Output {
-                    Self(self.0 & rhs.0)
-                }
-            }
-
-            impl core::ops::BitAndAssign for #struct_name {
-                fn bitand_assign(&mut self, rhs: Self) {
-                    self.0 &= rhs.0
-                }
-            }
-
-            impl core::ops::BitOr for #struct_name {
-                type Output = Self;
-
-                fn bitor(self, rhs: Self) -> Self::Output {
-                    Self(self.0 | rhs.0)
-                }
-            }
-
-            impl core::ops::BitOrAssign for #struct_name {
-                fn bitor_assign(&mut self, rhs: Self) {
-                    self.0 |= rhs.0
-                }
-            }
-
-            impl core::ops::BitXor for #struct_name {
-                type Output = Self;
-
-                fn bitxor(self, rhs: Self) -> Self::Output {
-                    Self(self.0 ^ rhs.0)
-                }
-            }
-
-            impl core::ops::BitXorAssign for #struct_name {
-                fn bitxor_assign(&mut self, rhs: Self) {
-                    self.0 ^= rhs.0
-                }
-            }
-
-            impl core::ops::BitAnd<E> for #struct_name {
-                type Output = Self;
-
-                fn bitand(self, rhs: E) -> Self::Output {
-                    Self(self.0 & Inner::new(rhs as Repr))
-                }
-            }
-
-            impl core::ops::BitAndAssign<E> for #struct_name {
-                fn bitand_assign(&mut self, rhs: E) {
-                    self.0 &= Inner::new(rhs as Repr)
-                }
-            }
-
-            impl core::ops::BitOr<E> for #struct_name {
-                type Output = Self;
-
-                fn bitor(self, rhs: E) -> Self::Output {
-                    Self(self.0 | Inner::new(rhs as Repr))
-                }
-            }
-
-            impl core::ops::BitOrAssign<E> for #struct_name {
-                fn bitor_assign(&mut self, rhs: E) {
-                    self.0 |= Inner::new(rhs as Repr)
-                }
-            }
-
-            impl core::ops::BitXor<E> for #struct_name {
-                type Output = Self;
-
-                fn bitxor(self, rhs: E) -> Self::Output {
-                    Self(self.0 ^ Inner::new(rhs as Repr))
-                }
-            }
-
-            impl core::ops::BitXorAssign<E> for #struct_name {
-                fn bitxor_assign(&mut self, rhs: E) {
-                    self.0 ^= Inner::new(rhs as Repr)
-                }
-            }
-
-            impl FromIterator<E> for #struct_name {
-                fn from_iter<T: IntoIterator<Item = E>>(iter: T) -> Self {
-                    iter.into_iter().fold(Self::none(), |acc, v| acc | v)
-                }
-            }
-
-            impl core::fmt::Debug for #struct_name {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                    let count = self.variants().count();
-                    write!(f, "{}{{{}}}", #struct_name_string, self.variants().enumerate().fold("".to_owned(), |mut acc, (i, v)| {
-                        acc.push_str(&v.to_string());
-                        if i != count - 1 {
-                            acc.push_str(", ")
-                        }
-                        acc
-                    }))
-                }
-            }
-
-            impl core::fmt::Display for #struct_name {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                    let count = self.variants().count();
-                    write!(f, "{{{}}}", self.variants().enumerate().fold("".to_owned(), |mut acc, (i, v)| {
-                        acc.push_str(&v.to_string());
-                        if i != count - 1 {
-                            acc.push_str(", ")
-                        }
-                        acc
-                    }))
                 }
             }
         }
@@ -535,29 +360,4 @@ fn display_match(data: VariantData, count: usize) -> proc_macro2::TokenStream {
         ));
     }
     s.parse().expect(INVALID_MATC_ERROR)
-}
-
-fn additional_derives(args: Punctuated<Meta, Comma>) -> proc_macro2::TokenStream {
-    if args.len() > 3 {
-        panic!("{MAX_3_ARGS}");
-    }
-
-    let mut possible_args = HashSet::<&str>::from(["Clone", "Copy", "Hash"]);
-    let mut derives = String::new();
-    for arg in args {
-        match arg {
-            Meta::Path(p) => {
-                let ident = p.get_ident().expect(ONLY_NAME_ARGS).to_string();
-                if possible_args.contains(ident.as_str()) {
-                    possible_args.remove(ident.as_str());
-                    derives.push_str(&ident);
-                    derives.push_str(", ");
-                } else {
-                    panic!("{BAD_ARG}");
-                }
-            },
-            _ => panic!("{BAD_ARG_TYPE}"),
-        }
-    }
-    derives.parse().expect("derives should be a valid comma separated meta token list")
 }
