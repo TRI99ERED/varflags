@@ -8,6 +8,7 @@ use std::{
 /// Error indicating failure to convert from integer representation to a flag.<br/>
 /// Contains the value, which failed to be converted into a flag.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ReprToFlagError<Repr: Sized + Binary + Debug>(Repr);
 
 impl<Repr: Sized + Binary + Debug> ReprToFlagError<Repr> {
