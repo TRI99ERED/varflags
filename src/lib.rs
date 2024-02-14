@@ -1,3 +1,8 @@
+//! Crate exporting [`varflags`] macro, allowing to use unit-like enums in conjunction with
+//! [`Varflags`] struct to create easy to use bitflags data structure defined over enum variants.
+//! 
+//! Read [`varflags`] documentation for comprehensive description with example.
+
 extern crate varflags_attribute;
 pub use varflags_attribute::varflags;
 
