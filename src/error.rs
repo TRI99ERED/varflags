@@ -1,3 +1,5 @@
+//! Module defining error type.
+
 use std::{
     error::Error,
     fmt::{Binary, Debug, Display},
