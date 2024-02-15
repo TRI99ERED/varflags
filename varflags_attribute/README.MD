@@ -1,4 +1,4 @@
-Crate containing attribute procedural macro `varflags`. This crate isn't meant to be used without `varflags` crate.
+Crate containing attribute procedural macro `varflags`. This crate isn't meant to be used without [`varflags`](https://crates.io/crates/varflags) crate.
 
 ## License
 

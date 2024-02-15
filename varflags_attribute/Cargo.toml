@@ -1,6 +1,6 @@
 [package]
 name = "varflags_attribute"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Crate containing attribute procedural macro varflags. This crate isn't meant to be used without varflags crate."
