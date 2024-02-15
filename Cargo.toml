@@ -2,6 +2,13 @@
 name = "varflags"
 version = "0.0.1"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Crate exporting varflags macro, allowing to use unit-like enums in conjunction with Varflags struct to create easy to use bitflags data structure defined over enum variants."
+repository = "https://github.com/TRI99ERED/varflags"
+readme = "README.md"
+keywords = ["bitflags", "data-structure", "bitset"]
+categories = ["data-structures"]
+
 
 [features]
 serde = ["dep:serde", "bitworks/serde"]

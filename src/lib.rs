@@ -42,7 +42,7 @@
 //! 
 //! assert!(c.contains(&TestInput::A));
 //! assert!(!c.contains(&TestInput::H));
-//!
+//! 
 //! let d = TestInput::A | TestInput::B;
 //! let e = TestInput::A | TestInput::C;
 //! 
