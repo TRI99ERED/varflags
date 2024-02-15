@@ -74,9 +74,11 @@ fn example() -> Result<(), Box<dyn Error>> {
     //                                                          EFHDGCBA
     assert_eq!(c, TestInputVarflags::_from_inner(Bitset8::new(0b00010011)));
 
-    println!("{c}");
-    
-    println!("{c:?}");
+    let display = format!("{c}");
+    let debug = format!("{c:?}");
+
+    assert_eq!(display.as_str(), "{A, B, D}");
+    assert_eq!(debug.as_str(), "Varflags{A, B, D}");
 
     Ok(())
 }

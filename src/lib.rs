@@ -5,8 +5,6 @@
 //!
 //! # Examples
 //! ```rust
-//! # use std::error::Error;
-//! # fn main() -> Result<(), Box<dyn Error>> {
 //! use varflags::varflags;
 //! 
 //! #[derive(Copy, PartialEq, Eq, Debug)]
@@ -29,55 +27,56 @@
 //!     H,
 //! }
 //! 
-//! let a = TestInput::A;
-//! let b = TestInput::B;
+//! fn main() {
+//!     let a = TestInput::A;
+//!     let b = TestInput::B;
 //! 
-//! assert_eq!(u8::from(TestInput::D), 0b00010000);
-//! assert_eq!(u8::from(TestInput::E), 0b10000000);
-//! assert_eq!(u8::from(TestInput::F), 0b01000000);
+//!     assert_eq!(u8::from(TestInput::D), 0b00010000);
+//!     assert_eq!(u8::from(TestInput::E), 0b10000000);
+//!     assert_eq!(u8::from(TestInput::F), 0b01000000);
 //! 
-//! let c = a | b | TestInput::D;
-//! //                                                                             EFHDGCBA
-//! assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
+//!     let c = a | b | TestInput::D;
+//!     //                                                                             EFHDGCBA
+//!     assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
 //! 
-//! assert!(c.contains(&TestInput::A));
-//! assert!(!c.contains(&TestInput::H));
+//!     assert!(c.contains(&TestInput::A));
+//!     assert!(!c.contains(&TestInput::H));
 //! 
-//! let d = TestInput::A | TestInput::B;
-//! let e = TestInput::A | TestInput::C;
+//!     let d = TestInput::A | TestInput::B;
+//!     let e = TestInput::A | TestInput::C;
 //! 
-//! assert!(c.includes(&d));
-//! assert!(!c.includes(&e));
+//!     assert!(c.includes(&d));
+//!     assert!(!c.includes(&e));
 //! 
-//! let f = TestInput::F | TestInput::H;
+//!     let f = TestInput::F | TestInput::H;
 //! 
-//! assert!(c.intersects(&e));
-//! assert!(!c.intersects(&f));
+//!     assert!(c.intersects(&e));
+//!     assert!(!c.intersects(&f));
 //! 
-//! let x = TestInputVarflags::ALL;
-//! let mut iter = x.variants();
+//!     let x = TestInputVarflags::ALL;
+//!     let mut iter = x.variants();
 //! 
-//! assert_eq!(iter.next(), Some(TestInput::A));
-//! assert_eq!(iter.next(), Some(TestInput::B));
-//! assert_eq!(iter.next(), Some(TestInput::C));
-//! assert_eq!(iter.next(), Some(TestInput::G));
-//! assert_eq!(iter.next(), Some(TestInput::D));
-//! assert_eq!(iter.next(), Some(TestInput::H));
-//! assert_eq!(iter.next(), Some(TestInput::F));
-//! assert_eq!(iter.next(), Some(TestInput::E));
-//! assert_eq!(iter.next(), None);
+//!     assert_eq!(iter.next(), Some(TestInput::A));
+//!     assert_eq!(iter.next(), Some(TestInput::B));
+//!     assert_eq!(iter.next(), Some(TestInput::C));
+//!     assert_eq!(iter.next(), Some(TestInput::G));
+//!     assert_eq!(iter.next(), Some(TestInput::D));
+//!     assert_eq!(iter.next(), Some(TestInput::H));
+//!     assert_eq!(iter.next(), Some(TestInput::F));
+//!     assert_eq!(iter.next(), Some(TestInput::E));
+//!     assert_eq!(iter.next(), None);
 //! 
-//! let iter = c.variants();
-//! let c: TestInputVarflags = iter.collect();
-//! //                                                                             EFHDGCBA
-//! assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
+//!     let iter = c.variants();
+//!     let c: TestInputVarflags = iter.collect();
+//!     //                                                                             EFHDGCBA
+//!     assert_eq!(c, TestInputVarflags::_from_inner(bitworks::prelude::Bitset8::new(0b00010011)));
 //! 
-//! println!("{c}");
+//!     let display = format!("{c}");
+//!     let debug = format!("{c:?}");
 //! 
-//! println!("{c:?}");
-//! 
-//! #   Ok(())
-//! # }
+//!     assert_eq!(display.as_str(), "{A, B, D}");
+//!     assert_eq!(debug.as_str(), "Varflags{A, B, D}");
+//! }
 //! ```
 
 extern crate varflags_attribute;
