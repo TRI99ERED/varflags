@@ -77,11 +77,10 @@ dependencies = [
 
 [[package]]
 name = "varflags_attribute"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bitworks",
  "proc-macro2",
  "quote",
- "serde",
  "syn",
 ]

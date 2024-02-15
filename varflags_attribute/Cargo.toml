@@ -1,19 +1,21 @@
 [package]
 name = "varflags_attribute"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Crate containing attribute procedural macro varflags. This crate isn't meant to be used without varflags crate."
+repository = "https://github.com/TRI99ERED/varflags"
+readme = "README.md"
+keywords = ["bitflags", "data-structure", "bitset"]
+categories = ["data-structures"]
 
 [lib]
 proc-macro = true
-
-[features]
-serde = ["dep:serde", "bitworks/serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bitworks = "0.1.5"
-quote = "*"
-syn = { version = "*", features = ["full"] }
-proc-macro2 = "*"
-serde = { version = "*", optional = true, features = ["derive"] }
+quote = "1.0.35"
+syn = { version = "2.0.48", features = ["full"] }
+proc-macro2 = "1.0.78"
