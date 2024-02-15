@@ -1,3 +1,5 @@
+[![Rust](https://github.com/TRI99ERED/varflags/actions/workflows/rust.yml/badge.svg)](https://github.com/TRI99ERED/varflags/actions/workflows/rust.yml)
+
 Crate exporting `varflags` macro, allowing to use unit-like enums in conjunction with `Varflags` struct to create easy to use bitflags data structure defined over enum variants.
 
 Enable feature `"serde"` to enable `serde::Serialize` and `serde::Deserialize` for most applicable types.
