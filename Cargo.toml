@@ -16,6 +16,6 @@ serde = ["dep:serde", "bitworks/serde"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-varflags_attribute = { path = "varflags_attribute" }
+varflags_attribute = "0.0.2"
 bitworks = "0.1.5"
 serde = { version = "1.0.196", optional = true, features = ["derive"] }
