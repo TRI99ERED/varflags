@@ -81,9 +81,10 @@ impl Parse for EnumData {
     #[inline(always)]
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         input.call(syn::Attribute::parse_outer)?;
-        input.parse::<Token![enum]>()?;
 
         let vis = input.parse::<Visibility>()?;
+        
+        input.parse::<Token![enum]>()?;
         let name = input.parse::<Ident>()?;
 
         let _generics = input.parse::<syn::Generics>()?;
@@ -378,7 +379,9 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 fn doc_comment(name: Ident) -> proc_macro2::TokenStream {
-    format!("/// [`Varflags`] specific for [`{}`].", name).parse().expect(INVALID_DOC_COMMENT)
+    format!("/// [`Varflags`] specific for [`{}`].", name)
+        .parse()
+        .expect(INVALID_DOC_COMMENT)
 }
 
 #[inline(always)]
