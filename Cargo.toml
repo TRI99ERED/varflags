@@ -1,6 +1,6 @@
 [package]
 name = "varflags"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Crate exporting varflags macro, allowing to use unit-like enums in conjunction with Varflags struct to create easy to use bitflags data structure defined over enum variants."
@@ -16,6 +16,6 @@ serde = ["dep:serde", "bitworks/serde"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-varflags_attribute = "0.1.0"
+varflags_attribute = "0.2.0"
 bitworks = "0.2.0"
 serde = { version = "1.0.196", optional = true, features = ["derive"] }
