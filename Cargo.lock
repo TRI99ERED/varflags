@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitworks"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "424f46d04e8f62ac1677190d06fe1dc444bd2b7fcb0ec72d4b9a675a9ce2c1cf"
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -68,20 +74,20 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "varflags"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
- "bitworks",
+ "bitworks 0.1.5",
  "serde",
  "varflags_attribute",
 ]
 
 [[package]]
 name = "varflags_attribute"
-version = "0.0.3"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56f40f3488afd34e60ea66170e2d2757114c7e3941069714d0d4683f6806d59b"
+checksum = "54525832644b77232dcf429697fed5ea0e041b52125974ab23444244974141cd"
 dependencies = [
- "bitworks",
+ "bitworks 0.2.0",
  "proc-macro2",
  "quote",
  "syn",
