@@ -315,6 +315,13 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
 
+            impl From<E> for #struct_name {
+                #[inline(always)]
+                fn from(value: E) -> Self {
+                    #struct_name::_from_inner(!Inner::new(value as Repr))
+                }
+            }
+
             impl core::ops::Not for E {
                 type Output = #struct_name;
 
