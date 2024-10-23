@@ -81,8 +81,10 @@
 
 extern crate varflags_attribute;
 pub use varflags_attribute::varflags;
+pub use bitworks::prelude as bitworks_elements;
 
 use bitworks::{bitset::Bitset, index::Index};
+
 use std::{
     fmt::Display,
     marker::{Copy, PhantomData},

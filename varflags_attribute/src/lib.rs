@@ -299,8 +299,8 @@ fn varflags_impl(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         mod #mod_name {
             use varflags::error::ReprToFlagError;
-            use bitworks::index::Index;
-            use bitworks::prelude::#bitset as Inner;
+            use varflags::bitworks_elements::Index;
+            use varflags::bitworks_elements::#bitset as Inner;
             type Repr = #repr;
 
             use super::#name as E;
