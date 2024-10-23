@@ -1,6 +1,6 @@
 [package]
 name = "varflags_attribute"
-version = "0.0.3"
+version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Crate containing attribute procedural macro varflags. This crate isn't meant to be used without varflags crate."
@@ -15,7 +15,7 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitworks = "0.1.5"
+bitworks = "0.2.0"
 quote = "1.0.35"
 syn = { version = "2.0.48", features = ["full"] }
 proc-macro2 = "1.0.78"
