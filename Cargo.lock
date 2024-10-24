@@ -68,7 +68,7 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "varflags"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "bitworks",
  "serde",
@@ -77,9 +77,9 @@ dependencies = [
 
 [[package]]
 name = "varflags_attribute"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea924661c030e926874a07090b7f7eed6110e3b7c5e064c095278cc34aa88a3c"
+checksum = "c7031bdb94d82b0c68026816ff6ddaa5b0d8f92b314a9ecffdcefd6f07b1de60"
 dependencies = [
  "bitworks",
  "proc-macro2",
